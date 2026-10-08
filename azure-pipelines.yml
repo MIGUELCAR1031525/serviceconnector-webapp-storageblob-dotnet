@@ -9,6 +9,7 @@ variables:
   dotnetVersion: 9.x
   azureSubscription: MIA_Connection_2
   appName: miaazurestorage
+  storageBlobEndpoint: https://miaastoragejm26.blob.core.windows.net/
 
 steps:
   - task: UseDotNet@2
@@ -45,4 +46,5 @@ steps:
       azureSubscription: $(azureSubscription)
       appType: webApp
       appName: $(appName)
+      appSettings: '-AZURE_STORAGEBLOB_RESOURCEENDPOINT $(storageBlobEndpoint)'
       package: '$(Build.ArtifactStagingDirectory)/publish/**/*.zip'
