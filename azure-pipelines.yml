@@ -1,0 +1,48 @@
+trigger:
+  - main
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  buildConfiguration: Release
+  dotnetVersion: 9.x
+  azureSubscription: MIA_Connection_2
+  appName: miaazurestorage
+
+steps:
+  - task: UseDotNet@2
+    displayName: Install .NET 9 SDK
+    inputs:
+      packageType: sdk
+      version: $(dotnetVersion)
+
+  - task: DotNetCoreCLI@2
+    displayName: Restore dependencies
+    inputs:
+      command: restore
+      projects: '**/*.csproj'
+
+  - task: DotNetCoreCLI@2
+    displayName: Build application
+    inputs:
+      command: build
+      projects: '**/*.csproj'
+      arguments: '--configuration $(buildConfiguration) --no-restore'
+
+  - task: DotNetCoreCLI@2
+    displayName: Publish application
+    inputs:
+      command: publish
+      publishWebProjects: false
+      projects: '**/*.csproj'
+      arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/publish --no-build'
+      zipAfterPublish: true
+
+  - task: AzureWebApp@1
+    displayName: Deploy to Azure App Service
+    inputs:
+      azureSubscription: $(azureSubscription)
+      appType: webApp
+      appName: $(appName)
+      package: '$(Build.ArtifactStagingDirectory)/publish/**/*.zip'

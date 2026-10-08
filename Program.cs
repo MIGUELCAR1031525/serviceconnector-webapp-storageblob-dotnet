@@ -13,7 +13,10 @@ namespace WebStorageSample
     {
         public static void Main(string[] args)
         {
-            DotNetEnv.Env.Load();
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Const.ENDPOINT_ENV_KEY)))
+            {
+                DotNetEnv.Env.Load();
+            }
             CreateHostBuilder(args).Build().Run();
         }
 
