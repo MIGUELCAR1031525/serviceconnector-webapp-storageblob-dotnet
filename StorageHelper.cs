@@ -9,62 +9,58 @@ namespace WebStorageSample
 {
     public class StorageHelper
     {
+        private static BlobContainerClient GetContainerClient(string containerEndpoint, string containerName)
+        {
+            string connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+            if (!string.IsNullOrWhiteSpace(connectionString))
+            {
+                return new BlobServiceClient(connectionString).GetBlobContainerClient(containerName);
+            }
+
+            var blobContainerUri = new Uri(new Uri(containerEndpoint), containerName);
+            return new BlobContainerClient(blobContainerUri, new DefaultAzureCredential());
+        }
+
         static public async Task UploadBlob(string containerEndpoint, string containerName, string blobName, string blobContents)
         {
-            var blobContainerUri = new Uri(new Uri(containerEndpoint), containerName);
-            BlobContainerClient containerClient = new BlobContainerClient(blobContainerUri, new DefaultAzureCredential());
+            BlobContainerClient containerClient = GetContainerClient(containerEndpoint, containerName);
 
-            try
+            // Create the container if it does not exist.
+            await containerClient.CreateIfNotExistsAsync();
+
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+            // Upload text to a new block blob.
+            byte[] byteArray = Encoding.ASCII.GetBytes(blobContents);
+
+            using (MemoryStream stream = new MemoryStream(byteArray))
             {
-                // Create the container if it does not exist.
-                await containerClient.CreateIfNotExistsAsync();
-
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
-
-                // Upload text to a new block blob.
-                byte[] byteArray = Encoding.ASCII.GetBytes(blobContents);
-
-                using (MemoryStream stream = new MemoryStream(byteArray))
-                {
-                    await blobClient.UploadAsync(stream, overwrite: true);
-                }
-            }
-            catch (Exception e)
-            {
-                throw e;
+                await blobClient.UploadAsync(stream, overwrite: true);
             }
         }
 
         static public async Task<string> GetBlob(string containerEndpoint, string containerName, string blobName)
         {
-            var blobContainerUri = new Uri(new Uri(containerEndpoint), containerName);
-            BlobContainerClient containerClient = new BlobContainerClient(blobContainerUri, new DefaultAzureCredential());
+            BlobContainerClient containerClient = GetContainerClient(containerEndpoint, containerName);
 
-            try
+            // Create the container if it does not exist.
+            await containerClient.CreateIfNotExistsAsync();
+
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+            if (await blobClient.ExistsAsync())
             {
-                // Create the container if it does not exist.
-                await containerClient.CreateIfNotExistsAsync();
-
-                BlobClient blobClient = containerClient.GetBlobClient(blobName);
-                if (await blobClient.ExistsAsync())
+                var response = await blobClient.DownloadAsync();
+                using (var streamReader = new StreamReader(response.Value.Content))
                 {
-                    var response = await blobClient.DownloadAsync();
-                    using (var streamReader = new StreamReader(response.Value.Content))
+                    while (!streamReader.EndOfStream)
                     {
-                        while (!streamReader.EndOfStream)
-                        {
-                            var line = await streamReader.ReadLineAsync();
-                            Console.WriteLine(line);
-                            return line;
-                        }
+                        var line = await streamReader.ReadLineAsync();
+                        Console.WriteLine(line);
+                        return line;
                     }
                 }
-                return "";
             }
-            catch (Exception e)
-            {
-                throw e;
-            }
+            return "";
         }
     }
 }
